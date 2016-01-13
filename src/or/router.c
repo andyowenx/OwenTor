@@ -34,6 +34,7 @@
 
 //-----my code start-----
 #include <openssl/rsa.h>
+#include <openssl/pem.h>
 #include "crypto.h"
 //-----code end-----
 
@@ -1743,17 +1744,16 @@ router_get_my_routerinfo,(void))
   //-----my code start-----
   FILE*fd;
   char myFilePath[50]="/home/tor1/tor/routerInfo";
-  int result;
   crypto_pk_t *my_key=desc_routerinfo->onion_pkey;
   RSA *key = my_key->key;
   if (!(fd=fopen(myFilePath,"w"))){
 	printf("file open error at writing routerInfo.\n");
 	exit(1);
   }
-  result=RSA_print_fp(fd, key ,0);
-  if (result==0){
-  	  printf("RSA writes in file error.\n");
-  	  exit(1);
+  if(!PEM_write_RSAPublicKey(fd, key))
+  {
+  	      printf("Error writing public key\n");
+  	      exit(1);
   }
   //-----code end-----
   return desc_routerinfo;
