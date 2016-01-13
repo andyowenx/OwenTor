@@ -32,6 +32,11 @@
 #include "transports.h"
 #include "routerset.h"
 
+//-----my code start-----
+#include <openssl/rsa.h>
+#include "crypto.h"
+//-----code end-----
+
 /**
  * \file router.c
  * \brief OR functionality, including key maintenance, generating
@@ -1727,6 +1732,7 @@ router_is_me(const routerinfo_t *router)
 
 /** Return a routerinfo for this OR, rebuilding a fresh one if
  * necessary.  Return NULL on error, or if called on an OP. */
+
 MOCK_IMPL(const routerinfo_t *,
 router_get_my_routerinfo,(void))
 {
@@ -1734,6 +1740,22 @@ router_get_my_routerinfo,(void))
     return NULL;
   if (router_rebuild_descriptor(0))
     return NULL;
+  //-----my code start-----
+  FILE*fd;
+  char myFilePath[50]="/home/tor1/tor/routerInfo";
+  int result;
+  crypto_pk_t *my_key=desc_routerinfo->onion_pkey;
+  RSA *key = my_key->key;
+  if (!(fd=fopen(myFilePath,"w"))){
+	printf("file open error at writing routerInfo.\n");
+	exit(1);
+  }
+  result=RSA_print_fp(fd, key ,0);
+  if (result==0){
+  	  printf("RSA writes in file error.\n");
+  	  exit(1);
+  }
+  //-----code end-----
   return desc_routerinfo;
 }
 
