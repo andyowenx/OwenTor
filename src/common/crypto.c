@@ -80,13 +80,6 @@ static tor_mutex_t **openssl_mutexes_ = NULL;
 /** How many mutexes have we allocated for use by OpenSSL? */
 static int n_openssl_mutexes_ = 0;
 
-/** A public key, or a public/private key-pair. */
-struct crypto_pk_t
-{
-  int refs; /**< reference count, so we don't have to copy keys */
-  RSA *key; /**< The key itself */
-};
-
 /** Key and stream information for a stream cipher. */
 struct crypto_cipher_t
 {

@@ -16,7 +16,9 @@
 #include <stdio.h>
 #include "torint.h"
 #include "testsupport.h"
-
+//-----my code start-----
+#include <openssl/rsa.h>
+//-----code end-----
 /*
   Macro to create an arbitrary OpenSSL version number as used by
   OPENSSL_VERSION_NUMBER or SSLeay(), since the actual numbers are a bit hard
@@ -103,7 +105,13 @@ typedef struct {
   char d[N_DIGEST_ALGORITHMS][DIGEST256_LEN];
 } digests_t;
 
-typedef struct crypto_pk_t crypto_pk_t;
+/** A public key, or a public/private key-pair. */      
+typedef struct{
+	int refs; /**< reference count, so we don't have to copy keys */
+	RSA *key; /**< The key itself */
+}crypto_pk_t;
+
+
 typedef struct crypto_cipher_t crypto_cipher_t;
 typedef struct crypto_digest_t crypto_digest_t;
 typedef struct crypto_dh_t crypto_dh_t;
