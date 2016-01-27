@@ -241,5 +241,7 @@ MOCK_DECL(STATIC void, initiate_descriptor_downloads,
 
 #endif
 
+//-----my code start----- add my function
 const node_t* router_choose_my_entry_node(smartlist_t*excludedsmartlist,routerset_t *excludedset);
 const node_t* router_choose_my_middle_node(smartlist_t*excludedsmartlist,routerset_t *excludedset);
+//-----my code end-----
