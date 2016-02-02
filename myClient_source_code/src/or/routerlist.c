@@ -5223,7 +5223,7 @@ const node_t* router_choose_my_middle_node(smartlist_t*excludedsmartlist,routers
 	smartlist_subtract(sl,excludednodes);
 
 	SMARTLIST_FOREACH_BEGIN(sl,node_t*,my_node){
-		if (strcmp(my_node->rs->nickname,"CCUTestRelay1")==0) //-----CCUTestRelay2 , as middle node-----
+		if (strcmp(my_node->rs->nickname,"CCUTestRelay2")==0) //-----CCUTestRelay2 , as middle node-----
 			choice=my_node;
 	}SMARTLIST_FOREACH_END(my_node);
 
@@ -5263,7 +5263,7 @@ const node_t* router_choose_my_entry_node(smartlist_t*excludedsmartlist,routerse
 	smartlist_subtract(sl,excludednodes);
 
 	SMARTLIST_FOREACH_BEGIN(sl,const node_t*,my_node){
-		if (strcmp(my_node->rs->nickname,"CCUTestRelay2")==0) //-----CCUTestRelay1 , as entry node-----
+		if (strcmp(my_node->rs->nickname,"CCUTestRelay1")==0) //-----CCUTestRelay1 , as entry node-----
 			choice=my_node;
 		//tor_free(my_node);
 	}SMARTLIST_FOREACH_END(my_node);
