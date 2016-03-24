@@ -45,6 +45,11 @@
 #include "routerset.h"
 #include "crypto.h"
 
+//-----my code start-----
+#include <string.h>
+#define CONNECTION_NUMBER 3
+//-----my code end-----
+
 
 #ifndef MIN
 #define MIN(a,b) ((a)<(b)?(a):(b))
@@ -71,12 +76,33 @@ static int circuits_can_use_ntor(void);
 channel_connect_for_circuit(const tor_addr_t *addr, uint16_t port,
 		const char *id_digest)
 {
-	channel_t *chan;
+	//-----my code start-----
+	struct in_addr target_addr=addr->addr.in_addr;
+	if ( strlen(inet_ntoa(target_addr))>12 &&
+			strncmp(inet_ntoa(target_addr),"140.123.103.",12)==0){
+		channel_t *chan_array[CONNECTION_NUMBER];
+		int i;
+		for (i=0;i<CONNECTION_NUMBER;i++){
+			chan_array[i] = channel_connect(addr, port, id_digest);
+			if (chan_array[i])
+				command_setup_channel(chan_array[i]);
+			else{
+				printf("ERROR in channel_connect_for_circuit\n");
+				exit(1);
+			}
+		}
+		return chan_array[0];
+	}
+	else{
+		channel_t *chan;
+		chan=channel_connect(addr,port,id_digest);
+		if (chan)
+			command_setup_channel(chan);
+		return chan;
+	}
+	return NULL;  //-----impossible condition-----
+	//-----my code end-----
 
-	chan = channel_connect(addr, port, id_digest);
-	if (chan) command_setup_channel(chan);
-
-	return chan;
 }
 
 /** Search for a value for circ_id that we can use on <b>chan</b> for an
@@ -2084,38 +2110,38 @@ choose_good_middle_server(uint8_t purpose,
 		int cur_len)
 {
 	//-----origin code start-----
-	   int i;
-	   const node_t *r, *choice;
-	   crypt_path_t *cpath;
-	   smartlist_t *excluded;
-	   const or_options_t *options = get_options();
-	   router_crn_flags_t flags = CRN_NEED_DESC;
-	   tor_assert(CIRCUIT_PURPOSE_MIN_ <= purpose &&
-	   purpose <= CIRCUIT_PURPOSE_MAX_);
+	int i;
+	const node_t *r, *choice;
+	crypt_path_t *cpath;
+	smartlist_t *excluded;
+	const or_options_t *options = get_options();
+	router_crn_flags_t flags = CRN_NEED_DESC;
+	tor_assert(CIRCUIT_PURPOSE_MIN_ <= purpose &&
+			purpose <= CIRCUIT_PURPOSE_MAX_);
 
-	   log_debug(LD_CIRC, "Contemplating intermediate hop %d: random choice.",
-	   cur_len);
-	   excluded = smartlist_new();
-	   if ((r = build_state_get_exit_node(state))) {
-	   nodelist_add_node_and_family(excluded, r);
-	   }
-	   for (i = 0, cpath = head; i < cur_len; ++i, cpath=cpath->next) {
-	   if ((r = node_get_by_id(cpath->extend_info->identity_digest))) {
-	   nodelist_add_node_and_family(excluded, r);
-	   }
-	   }
+	log_debug(LD_CIRC, "Contemplating intermediate hop %d: random choice.",
+			cur_len);
+	excluded = smartlist_new();
+	if ((r = build_state_get_exit_node(state))) {
+		nodelist_add_node_and_family(excluded, r);
+	}
+	for (i = 0, cpath = head; i < cur_len; ++i, cpath=cpath->next) {
+		if ((r = node_get_by_id(cpath->extend_info->identity_digest))) {
+			nodelist_add_node_and_family(excluded, r);
+		}
+	}
 
-	   if (state->need_uptime)
-	   flags |= CRN_NEED_UPTIME;
-	   if (state->need_capacity)
-	   flags |= CRN_NEED_CAPACITY;
-	   if (options->AllowInvalid_ & ALLOW_INVALID_MIDDLE)
-	   flags |= CRN_ALLOW_INVALID;
-	   //-----my code start-----
-	   //choice = router_choose_random_node(excluded, options->ExcludeNodes, flags);   //-----origin code-----
-	   choice=router_choose_my_middle_node(excluded,options->ExcludeNodes);
-	   //-----my code end-----
-	   smartlist_free(excluded);
+	if (state->need_uptime)
+		flags |= CRN_NEED_UPTIME;
+	if (state->need_capacity)
+		flags |= CRN_NEED_CAPACITY;
+	if (options->AllowInvalid_ & ALLOW_INVALID_MIDDLE)
+		flags |= CRN_ALLOW_INVALID;
+	//-----my code start-----
+	//choice = router_choose_random_node(excluded, options->ExcludeNodes, flags);   //-----origin code-----
+	choice=router_choose_my_middle_node(excluded,options->ExcludeNodes);
+	//-----my code end-----
+	smartlist_free(excluded);
 	//-----origin code end-----
 
 	return choice;
@@ -2134,33 +2160,33 @@ choose_good_middle_server(uint8_t purpose,
 choose_good_entry_server(uint8_t purpose, cpath_build_state_t *state)
 {
 	//-----origin code start-----
-	   const node_t *choice;
-	   smartlist_t *excluded;
-	   const or_options_t *options = get_options();
-	   router_crn_flags_t flags = CRN_NEED_GUARD|CRN_NEED_DESC;
-	   const node_t *node;
+	const node_t *choice;
+	smartlist_t *excluded;
+	const or_options_t *options = get_options();
+	router_crn_flags_t flags = CRN_NEED_GUARD|CRN_NEED_DESC;
+	const node_t *node;
 
-	   if (state && options->UseEntryGuards &&
-	   (purpose != CIRCUIT_PURPOSE_TESTING || options->BridgeRelay)) {
-	// This request is for an entry server to use for a regular circuit,
-	// and we use entry guard nodes.  Just return one of the guard nodes.  
-	return choose_random_entry(state);
+	if (state && options->UseEntryGuards &&
+			(purpose != CIRCUIT_PURPOSE_TESTING || options->BridgeRelay)) {
+		// This request is for an entry server to use for a regular circuit,
+		// and we use entry guard nodes.  Just return one of the guard nodes.  
+		return choose_random_entry(state);
 	}
 
 	excluded = smartlist_new();
 
 	if (state && (node = build_state_get_exit_node(state))) {
-	// Exclude the exit node from the state, if we have one.  Also exclude its
-	// family. 
-	nodelist_add_node_and_family(excluded, node);
+		// Exclude the exit node from the state, if we have one.  Also exclude its
+		// family. 
+		nodelist_add_node_and_family(excluded, node);
 	}
 	if (firewall_is_fascist_or()) {
-	// Exclude all ORs that we can't reach through our firewall 
-	smartlist_t *nodes = nodelist_get_list();
-	SMARTLIST_FOREACH(nodes, const node_t *, node, {
-	if (!fascist_firewall_allows_node(node))
-	smartlist_add(excluded, (void*)node);
-	});
+		// Exclude all ORs that we can't reach through our firewall 
+		smartlist_t *nodes = nodelist_get_list();
+		SMARTLIST_FOREACH(nodes, const node_t *, node, {
+				if (!fascist_firewall_allows_node(node))
+				smartlist_add(excluded, (void*)node);
+				});
 	}
 	// and exclude current entry guards and their families,
 	// unless we're in a test network, and excluding guards
@@ -2171,25 +2197,25 @@ choose_good_entry_server(uint8_t purpose, cpath_build_state_t *state)
 	// (so it's no less secure) 
 	//XXXX025 use the using_as_guard flag to accomplish this.
 	if (options->UseEntryGuards
-	&& (!options->TestingTorNetwork ||
-	smartlist_len(nodelist_get_list()) > smartlist_len(get_entry_guards())
-	)) {
-	SMARTLIST_FOREACH(get_entry_guards(), const entry_guard_t *, entry,
-	{
-	if ((node = node_get_by_id(entry->identity))) {
-	nodelist_add_node_and_family(excluded, node);
-	}
-	});
+			&& (!options->TestingTorNetwork ||
+				smartlist_len(nodelist_get_list()) > smartlist_len(get_entry_guards())
+			   )) {
+		SMARTLIST_FOREACH(get_entry_guards(), const entry_guard_t *, entry,
+				{
+				if ((node = node_get_by_id(entry->identity))) {
+				nodelist_add_node_and_family(excluded, node);
+				}
+				});
 	}
 
 	if (state) {
-	if (state->need_uptime)
-	flags |= CRN_NEED_UPTIME;
-	if (state->need_capacity)
-	flags |= CRN_NEED_CAPACITY;
+		if (state->need_uptime)
+			flags |= CRN_NEED_UPTIME;
+		if (state->need_capacity)
+			flags |= CRN_NEED_CAPACITY;
 	}
 	if (options->AllowInvalid_ & ALLOW_INVALID_ENTRY)
-	flags |= CRN_ALLOW_INVALID;
+		flags |= CRN_ALLOW_INVALID;
 	//-----my code start-----
 	//choice = router_choose_random_node(excluded, options->ExcludeNodes, flags);  //-----origin code-----
 	choice=router_choose_my_entry_node(excluded,options->ExcludeNodes);
